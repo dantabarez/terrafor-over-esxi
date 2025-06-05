@@ -36,7 +36,7 @@ data "vsphere_virtual_machine" "template" {
 
 # Virtual Machine
 resource "vsphere_virtual_machine" "ubuntu_vm" {
-  name             = "ubuntu-prueba-vcsa"
+  name             = "ubuntu-prueba-tesis"
   resource_pool_id = data.vsphere_host.host.resource_pool_id
   datastore_id     = data.vsphere_datastore.datastore.id
 

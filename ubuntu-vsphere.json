@@ -1,0 +1,59 @@
+{
+  "builders": [
+    {
+      "type": "vsphere-iso",
+      "vcenter_server": "192.168.100.99",
+      "username": "administrator@vsphere.local",
+      "password": "53a7114e17DT!",
+      "insecure_connection": true,
+      "datacenter": "Datacenter",
+      "cluster": "Cluster",
+      "datastore": "datastore1",
+      "guest_os_type": "ubuntu64Guest",
+      "convert_to_template": true,
+      "vm_name": "ubuntu-16.04-template",
+      "http_directory": "http",
+      "iso_paths": [
+        "[datastore1] ISO/ubuntu-16.04.3-server-amd64.iso"
+      ],
+      "communicator": "ssh",
+      "ssh_username": "unir",
+      "ssh_password": "unir",
+      "ssh_timeout": "30m",
+      "boot_wait": "5s",
+      "boot_command": [
+        "<enter><wait><f6><wait><esc><wait>",
+        "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "<bs><bs><bs>",
+        "/install/vmlinuz",
+        " initrd=/install/initrd.gz",
+        " priority=critical",
+        " locale=en_US",
+        " file=/media/preseed.cfg",
+        "<enter>"
+      ],
+      "disk_controller_type": "pvscsi",
+      "floppy_files": [
+        "{{template_dir}}/http/preseed.cfg"
+      ],
+      "network_adapters": [
+        {
+          "network": "VM Network",
+          "network_card": "vmxnet3"
+        }
+      ],
+      "storage": [
+        {
+          "disk_size": 20480
+        }
+      ]
+    }
+  ]
+}

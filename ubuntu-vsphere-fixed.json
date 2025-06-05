@@ -1,0 +1,46 @@
+{
+  "builders": [
+    {
+      "boot_command": [
+        "<esc><wait>",
+        "auto url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg ",
+        "debian-installer=en_US auto locale=en_US ",
+        "hostname=ubuntu ",
+        "fb=false debconf/frontend=noninteractive ",
+        "<enter>"
+      ],
+      "boot_wait": "5s",
+      "cluster": "Cluster",
+      "communicator": "ssh",
+      "convert_to_template": true,
+      "datacenter": "Datacenter",
+      "datastore": "datastore1",
+      "guest_os_type": "ubuntu64Guest",
+      "http_directory": "http",
+      "insecure_connection": true,
+      "iso_paths": [
+        "[datastore1] ubuntu-22.04.5-live-server-amd64.iso"
+      ],
+      "network_adapters": [
+        {
+          "network": "VM Network",
+          "network_card": "vmxnet3"
+        }
+      ],
+      "password": "53a7114e17DT!",
+      "ssh_password": "test",
+      "ssh_timeout": "20m",
+      "ssh_username": "test",
+      "storage": [
+        {
+          "disk_size": 20480
+        }
+      ],
+      "type": "vsphere-iso",
+      "username": "administrator@vsphere.local",
+      "vcenter_server": "192.168.100.99",
+      "vm_name": "ubuntu-22.04-template"
+    }
+  ]
+}
+
