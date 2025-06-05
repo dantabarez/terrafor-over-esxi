@@ -1,37 +1,48 @@
 provider "vsphere" {
-  user           = "root"
-  password       = "53a7114e17!"
-  vsphere_server = "192.168.100.92"
+  user                 = "administrator@vsphere.local"
+  password             = "53a7114e17DT!"
+  vsphere_server       = "192.168.100.99"
   allow_unverified_ssl = true
 }
 
+# Datacenter
 data "vsphere_datacenter" "dc" {
-  name = "ha-datacenter"
+  name = "Datacenter"
 }
 
+# Datastore
 data "vsphere_datastore" "datastore" {
   name          = "datastore1"
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
-data "vsphere_host" "host" {
-  name          = "your-esxi-hostname" # ← cambia esto al hostname real del ESXi (no IP)
-  datacenter_id = data.vsphere_datacenter.dc.id
-}
-
+# Network
 data "vsphere_network" "network" {
   name          = "VM Network"
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
+# Host
+data "vsphere_host" "host" {
+  name          = "192.168.100.92"
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
+# Template
+data "vsphere_virtual_machine" "template" {
+  name          = "ubuntu-template"
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
+# Virtual Machine
 resource "vsphere_virtual_machine" "ubuntu_vm" {
-  name             = "ubuntu-vm"
+  name             = "ubuntu-prueba-vcsa"
   resource_pool_id = data.vsphere_host.host.resource_pool_id
   datastore_id     = data.vsphere_datastore.datastore.id
 
   num_cpus = 2
   memory   = 2048
-  guest_id = "ubuntu64Guest"
+  guest_id = data.vsphere_virtual_machine.template.guest_id
 
   network_interface {
     network_id   = data.vsphere_network.network.id
@@ -40,16 +51,13 @@ resource "vsphere_virtual_machine" "ubuntu_vm" {
 
   disk {
     label            = "disk0"
-    size             = 20
-    eagerly_scrub    = false
-    thin_provisioned = true
+    size             = data.vsphere_virtual_machine.template.disks[0].size
+    thin_provisioned = data.vsphere_virtual_machine.template.disks[0].thin_provisioned
   }
 
-  cdrom {
-    datastore_id = data.vsphere_datastore.datastore.id
-    path         = "ubuntu-22.04.5-live-server-amd64.iso"  # ← Asegúrate de que este ISO esté en el datastore
+  clone {
+    template_uuid = data.vsphere_virtual_machine.template.id
   }
 
-
-  firmware = "bios"
+  firmware = data.vsphere_virtual_machine.template.firmware
 }
