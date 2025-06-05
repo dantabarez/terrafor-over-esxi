@@ -47,12 +47,9 @@ resource "vsphere_virtual_machine" "ubuntu_vm" {
 
   cdrom {
     datastore_id = data.vsphere_datastore.datastore.id
-    path         = "ubuntu-22.04.iso"  # ← Asegúrate de que este ISO esté en el datastore
+    path         = "ubuntu-22.04.5-live-server-amd64.iso"  # ← Asegúrate de que este ISO esté en el datastore
   }
 
-  clone {
-    template_uuid = null
-  }
 
   firmware = "bios"
 }
