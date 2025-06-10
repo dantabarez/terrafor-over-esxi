@@ -2,25 +2,9 @@
   "builders": [
     {
       "type": "vsphere-iso",
-      "vcenter_server": "192.168.100.99",
-      "username": "administrator@vsphere.local",
-      "password": "53a7114e17DT!",
-      "insecure_connection": true,
-      "datacenter": "Datacenter",
-      "cluster": "Cluster",
-      "datastore": "datastore1",
-      "guest_os_type": "ubuntu64Guest",
-      "convert_to_template": true,
-      "vm_name": "ubuntu-16.04-template",
-      "http_directory": "http",
-      "iso_paths": [
-        "[datastore1] ISO/ubuntu-16.04.3-server-amd64.iso"
-      ],
-      "communicator": "ssh",
-      "ssh_username": "unir",
-      "ssh_password": "unir",
-      "ssh_timeout": "30m",
-      "boot_wait": "5s",
+      "CPUs": 1,
+      "RAM": 1024,
+      "RAM_reserve_all": true,
       "boot_command": [
         "<enter><wait><f6><wait><esc><wait>",
         "<bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
@@ -41,19 +25,39 @@
       ],
       "disk_controller_type": "pvscsi",
       "floppy_files": [
-        "{{template_dir}}/http/preseed.cfg"
+        "{{template_dir}}/preseed.cfg"
+      ],
+      "guest_os_type": "ubuntu64Guest",
+      "host": "192.168.100.92",
+      "insecure_connection": true,
+      "iso_paths": [
+        "[datastore1] ISO/ubuntu-16.04.3-server-amd64.iso"
       ],
       "network_adapters": [
         {
-          "network": "VM Network",
           "network_card": "vmxnet3"
         }
       ],
+      "password": "53a7114e17DT!",
+      "ssh_password": "VMw@re1!",
+      "ssh_username": "packer",
       "storage": [
         {
-          "disk_size": 20480
+          "disk_size": 32768,
+          "disk_thin_provisioned": true
         }
-      ]
+      ],
+      "username": "administrator@vsphere.local",
+      "vcenter_server": "192.168.100.99",
+      "vm_name": "template-ubuntu-16.04"
+    }
+  ],
+  "provisioners": [
+    {
+      "inline": [
+        "ls /"
+      ],
+      "type": "shell"
     }
   ]
 }
