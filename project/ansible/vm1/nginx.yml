@@ -1,0 +1,31 @@
+---
+- name: Instalar y habilitar Nginx en Ubuntu
+  hosts: ubuntu
+  become: true
+
+  tasks:
+    - name: Actualizar apt
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instalar nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Habilitar y arrancar nginx
+      systemd:
+        name: nginx
+        enabled: true
+        state: started
+
+    - name: Verificar que nginx está corriendo
+      service:
+        name: nginx
+        state: started
+      register: nginx_status
+
+    - name: Mostrar estado de nginx
+      debug:
+        msg: "Nginx está {{ 'corriendo' if nginx_status.state == 'started' else 'detenido' }}"
