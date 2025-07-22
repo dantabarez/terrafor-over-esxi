@@ -1,0 +1,267 @@
+---
+- name: Aprovisionamiento del Stack ELK con Kibana como nodo principal
+  hosts: elk_servers
+  become: yes
+  vars:
+    elasticsearch_version: "8.15.0"
+    logstash_version: "8.15.0"
+    kibana_version: "8.15.0"
+    elastic_password: "elastic123"
+    kibana_password: "kibana123"
+    cluster_name: "elk-cluster"
+    node_name: "elk-master-node"
+    
+  tasks:
+    - name: Actualizar cache de paquetes
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instalar paquetes necesarios
+      apt:
+        name:
+          - curl
+          - wget
+          - gnupg
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+          - openjdk-11-jdk
+        state: present
+
+    - name: Configurar JAVA_HOME
+      lineinfile:
+        path: /etc/environment
+        line: 'JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"'
+        create: yes
+
+    - name: Agregar clave GPG de Elasticsearch
+      apt_key:
+        url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        state: present
+
+    - name: Agregar repositorio de Elasticsearch
+      apt_repository:
+        repo: "deb https://artifacts.elastic.co/packages/8.x/apt stable main"
+        state: present
+
+    - name: Instalar Elasticsearch
+      apt:
+        name: elasticsearch={{ elasticsearch_version }}
+        state: present
+        update_cache: yes
+
+    - name: Configurar Elasticsearch
+      template:
+        src: elasticsearch.yml.j2
+        dest: /etc/elasticsearch/elasticsearch.yml
+        backup: yes
+      notify: restart elasticsearch
+
+    - name: Crear directorio de datos de Elasticsearch
+      file:
+        path: /var/lib/elasticsearch
+        state: directory
+        owner: elasticsearch
+        group: elasticsearch
+        mode: '0755'
+
+    - name: Configurar límites del sistema para Elasticsearch
+      lineinfile:
+        path: /etc/security/limits.conf
+        line: "{{ item }}"
+      with_items:
+        - "elasticsearch soft memlock unlimited"
+        - "elasticsearch hard memlock unlimited"
+        - "elasticsearch soft nofile 65536"
+        - "elasticsearch hard nofile 65536"
+
+    - name: Configurar parámetros del kernel
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+
+    - name: Habilitar e iniciar Elasticsearch
+      systemd:
+        name: elasticsearch
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Esperar a que Elasticsearch esté disponible
+      wait_for:
+        port: 9200
+        host: localhost
+        delay: 30
+        timeout: 300
+
+    - name: Configurar password para usuario elastic
+      uri:
+        url: "http://localhost:9200/_security/user/elastic/_password"
+        method: POST
+        body_format: json
+        body:
+          password: "{{ elastic_password }}"
+        headers:
+          Content-Type: "application/json"
+        user: elastic
+        password: "{{ elastic_password }}"
+        force_basic_auth: yes
+      ignore_errors: yes
+
+    - name: Instalar Logstash
+      apt:
+        name: logstash={{ logstash_version }}
+        state: present
+
+    - name: Configurar Logstash - pipeline principal
+      copy:
+        content: |
+          input {
+            beats {
+              port => 5044
+            }
+            syslog {
+              port => 5140
+            }
+          }
+
+          filter {
+            if [fields][log_type] == "syslog" {
+              grok {
+                match => { "message" => "%{SYSLOGTIMESTAMP:timestamp} %{IPORHOST:server} %{DATA:program}(?:\[%{POSINT:pid}\])?: %{GREEDYDATA:message}" }
+              }
+            }
+          }
+
+          output {
+            elasticsearch {
+              hosts => ["localhost:9200"]
+              index => "logstash-%{+YYYY.MM.dd}"
+              user => "elastic"
+              password => "{{ elastic_password }}"
+            }
+          }
+        dest: /etc/logstash/conf.d/main.conf
+      notify: restart logstash
+
+    - name: Configurar Logstash - configuración principal
+      copy:
+        content: |
+          path.data: /var/lib/logstash
+          path.config: /etc/logstash/conf.d/*.conf
+          path.logs: /var/log/logstash
+          pipeline.workers: 2
+          pipeline.batch.size: 125
+          pipeline.batch.delay: 50
+          xpack.monitoring.enabled: true
+          xpack.monitoring.elasticsearch.hosts: ["http://localhost:9200"]
+          xpack.monitoring.elasticsearch.username: elastic
+          xpack.monitoring.elasticsearch.password: {{ elastic_password }}
+        dest: /etc/logstash/logstash.yml
+      notify: restart logstash
+
+    - name: Habilitar e iniciar Logstash
+      systemd:
+        name: logstash
+        enabled: yes
+        state: started
+
+    - name: Instalar Kibana
+      apt:
+        name: kibana={{ kibana_version }}
+        state: present
+
+    - name: Configurar Kibana
+      copy:
+        content: |
+          server.port: 5601
+          server.host: "0.0.0.0"
+          server.name: "{{ node_name }}"
+          elasticsearch.hosts: ["http://localhost:9200"]
+          elasticsearch.username: "kibana_system"
+          elasticsearch.password: "{{ kibana_password }}"
+          logging.dest: /var/log/kibana/kibana.log
+          logging.verbose: false
+          server.basePath: ""
+          server.rewriteBasePath: false
+          xpack.security.enabled: true
+          xpack.encryptedSavedObjects.encryptionKey: "a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d"
+          xpack.reporting.encryptionKey: "a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d"
+          xpack.security.encryptionKey: "a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d"
+        dest: /etc/kibana/kibana.yml
+      notify: restart kibana
+
+    - name: Crear directorio de logs de Kibana
+      file:
+        path: /var/log/kibana
+        state: directory
+        owner: kibana
+        group: kibana
+        mode: '0755'
+
+    - name: Configurar password para usuario kibana_system
+      uri:
+        url: "http://localhost:9200/_security/user/kibana_system/_password"
+        method: POST
+        body_format: json
+        body:
+          password: "{{ kibana_password }}"
+        headers:
+          Content-Type: "application/json"
+        user: elastic
+        password: "{{ elastic_password }}"
+        force_basic_auth: yes
+      ignore_errors: yes
+
+    - name: Habilitar e iniciar Kibana
+      systemd:
+        name: kibana
+        enabled: yes
+        state: started
+
+    - name: Esperar a que Kibana esté disponible
+      wait_for:
+        port: 5601
+        host: localhost
+        delay: 30
+        timeout: 300
+
+    - name: Configurar firewall para ELK Stack
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      with_items:
+        - "9200"   # Elasticsearch
+        - "5601"   # Kibana
+        - "5044"   # Logstash Beats
+        - "5140"   # Logstash Syslog
+
+    - name: Mostrar información de acceso
+      debug:
+        msg:
+          - "ELK Stack instalado correctamente!"
+          - "Elasticsearch: http://{{ ansible_default_ipv4.address }}:9200"
+          - "Kibana: http://{{ ansible_default_ipv4.address }}:5601"
+          - "Usuario Elasticsearch: elastic"
+          - "Password Elasticsearch: {{ elastic_password }}"
+          - "Usuario Kibana: kibana_system"
+          - "Password Kibana: {{ kibana_password }}"
+
+  handlers:
+    - name: restart elasticsearch
+      systemd:
+        name: elasticsearch
+        state: restarted
+
+    - name: restart logstash
+      systemd:
+        name: logstash
+        state: restarted
+
+    - name: restart kibana
+      systemd:
+        name: kibana
+        state: restarted

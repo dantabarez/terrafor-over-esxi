@@ -1,0 +1,43 @@
+# ======================== Elasticsearch Configuration =========================
+#
+# Configuración para nodo principal de Elasticsearch en el stack ELK
+#
+# ---------------------------------- Cluster -----------------------------------
+cluster.name: {{ cluster_name }}
+
+# ------------------------------------ Node ------------------------------------
+node.name: {{ node_name }}
+node.roles: [ master, data, ingest ]
+
+# ----------------------------------- Paths ------------------------------------
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+# ---------------------------------- Memory ------------------------------------
+bootstrap.memory_lock: true
+
+# ---------------------------------- Network -----------------------------------
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# --------------------------------- Discovery ----------------------------------
+discovery.type: single-node
+
+# ---------------------------------- Gateway -----------------------------------
+gateway.recover_after_nodes: 1
+
+# ---------------------------------- Various -----------------------------------
+action.destructive_requires_name: true
+
+# ---------------------------------- Security ----------------------------------
+xpack.security.enabled: true
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# ---------------------------------- Monitoring --------------------------------
+xpack.monitoring.collection.enabled: true
+
+# ---------------------------------- Indices -----------------------------------
+action.auto_create_index: .monitoring*,.watches,.triggered_watches,.watcher-history*,.ml*

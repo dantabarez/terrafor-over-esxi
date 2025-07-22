@@ -1,8 +1,16 @@
-# Proyecto Terraform - ESXi Infrastructure as Code
+# Proyecto Terraform + Ansible - Stack ELK en ESXi
 
-Este proyecto proporciona una infraestructura completa para gestionar máquinas virtuales en ESXi usando Terraform, con configuración mediante Ansible y creación de templates con Packer.
+Este proyecto proporciona una infraestructura completa para desplegar un stack ELK (Elasticsearch, Logstash, Kibana) en máquinas virtuales ESXi usando Terraform para la infraestructura y Ansible para el aprovisionamiento automático.
 
-## Estructura del proyecto
+## 🚀 Características principales
+
+- **Infraestructura como Código** con Terraform
+- **Aprovisionamiento automático** del stack ELK con Ansible
+- **Despliegue automatizado** desde OVA
+- **Stack ELK completo** con seguridad habilitada
+- **Scripts de automatización** para Windows PowerShell
+
+## 📁 Estructura del proyecto
 
 ```
 project/
@@ -10,99 +18,173 @@ project/
 ├── variables.tf               # Variables del proyecto
 ├── output.tf                  # Outputs del proyecto
 ├── terraform.tfvars           # Valores de las variables
+├── deploy-elk.ps1            # Script de despliegue automatizado
+├── destroy-elk.ps1           # Script de destrucción
 ├── modules/                   # Módulos de Terraform
 │   ├── vm_from_template/      # Módulo para crear VMs desde template
-│   │   ├── main.tf           # Configuración del módulo
-│   │   ├── variables.tf      # Variables del módulo
-│   │   └── outputs.tf        # Outputs del módulo
 │   └── vm_from_ova/          # Módulo para crear VMs desde OVA
 ├── ansible/                   # Configuraciones de Ansible
 │   └── vm1/                  # Configuración específica para VM1
+│       ├── vm_elk.yml        # Playbook del stack ELK
 │       ├── inventory.ini     # Inventario de hosts
-│       ├── nginx.yml         # Playbook para instalar Nginx
-│       └── README.md         # Documentación de Ansible
-└── packer/                   # Configuraciones de Packer
-    ├── ubuntu16/             # Templates para Ubuntu 16.04
-    ├── ubuntu22/             # Templates para Ubuntu 22.04
-    └── README.md             # Documentación de Packer
 ```
 
-## Uso
+## 🚀 Despliegue rápido del Stack ELK
 
-### 1. Configurar variables
+### Opción 1: Script automatizado (Recomendado)
+
+Para un despliegue completamente automatizado, ejecuta:
+
+```powershell
+.\deploy-elk.ps1
+```
+
+Este script realizará automáticamente:
+1. ✅ Verificación de Terraform y Ansible
+2. 🔧 Inicialización de Terraform
+3. 📋 Planificación del despliegue
+4. 🚀 Creación de la VM desde OVA
+5. ⚙️ Aprovisionamiento del stack ELK con Ansible
+6. 📊 Muestra URLs y credenciales de acceso
+
+### Opción 2: Paso a paso manual
+
+#### 1. Configurar variables
 Edita el archivo `terraform.tfvars` con tus valores:
 
 ```hcl
 vsphere_user     = "administrator@vsphere.local"
 vsphere_password = "tu_password"
-vsphere_server   = "192.168.100.99"
-datacenter_name  = "Datacenter"
+vsphere_server   = "192.168.1.10"
 datastore_name   = "datastore1"
-network_name     = "VM Network"
-host_name        = "192.168.100.92"
-template_name    = "ubuntu-template"
 ```
 
-### 2. Desplegar infraestructura
+#### 2. Desplegar infraestructura
 ```bash
+# Inicializar Terraform
 terraform init
+
+# Planificar el despliegue
 terraform plan
+
+# Aplicar el despliegue (incluye Ansible automáticamente)
 terraform apply
 ```
 
-### 3. Configurar VM con Ansible
+## 📊 Acceso al Stack ELK
+
+Después del despliegue exitoso, obtendrás:
+
+### URLs de acceso:
+- **Elasticsearch**: `http://IP_VM:9200`
+- **Kibana**: `http://IP_VM:5601`
+
+### Credenciales por defecto:
+- **Usuario**: `elastic`
+- **Contraseña**: `elastic123`
+
+### Verificar el despliegue:
 ```bash
-cd ansible/vm1
-ansible-playbook -i inventory.ini nginx.yml
+# Ver outputs de Terraform
+terraform output
+
+# Ver credenciales (sensibles)
+terraform output elk_credentials
 ```
 
-### 4. Crear templates con Packer (opcional)
-```bash
-cd packer/ubuntu22
-packer build ubuntu-vsphere.pkr.hcl
+## 🔧 Gestión de la infraestructura
+
+### Destruir la infraestructura
+```powershell
+# Usando el script automatizado
+.\destroy-elk.ps1
+
+# O manualmente
+terraform destroy
 ```
 
-## Módulos disponibles
+### Replicar en múltiples VMs
+Para desplegar el stack ELK en múltiples VMs:
 
-### vm_from_template
-Crea una máquina virtual desde un template existente en vSphere.
+1. Duplica el módulo en `main.tf`:
+```hcl
+module "vm_desde_ova_vm2" {
+  source             = "./modules/vm_from_ova"
+  vm_name            = "ubuntu_elk_2"
+  ova_path           = "C:\\Users\\claud\\Documents\\Projects\\Terraform\\Ubuntu64-bit-19.ova"
+  datastore_name     = var.datastore_name
+  datacenter_name    = "ha-datacenter"
+  host_name          = "192.168.1.10"
+  network_name       = "VM Network"
+  resource_pool_name = "Resources"
+}
+```
 
-**Variables principales:**
-- `vm_name`: Nombre de la VM
-- `vm_cpu`: Número de CPUs
-- `vm_memory`: Memoria en MB
-- `template_name`: Nombre del template
+2. Agrega el correspondiente `null_resource` para Ansible
 
-### vm_from_ova
-Crea una máquina virtual desde un archivo OVA.
+## 📋 Requisitos del sistema
 
-## Componentes
-
-### Terraform
-- Gestión de infraestructura como código
-- Módulos reutilizables para diferentes tipos de VM
-- Outputs para obtener información de las VMs creadas
-
-### Ansible
-- Configuración automática de las VMs desplegadas
-- Playbooks organizados por VM/propósito
-- Inventarios dinámicos
-
-### Packer
-- Creación de templates personalizados
-- Soporte para Ubuntu 16.04 y 22.04
-- Configuración automatizada con preseed
-
-## Requisitos
-
+### Para Terraform y Ansible:
+- Windows 10/11
 - Terraform >= 1.0
 - Ansible >= 2.9
-- Packer >= 1.7
+- PowerShell 5.1+
 - Acceso a vSphere/ESXi
-- Red accesible desde las VMs
 
-## Notas
+### Para las VMs creadas:
+- Ubuntu 18.04+ / Debian 9+
+- Mínimo 4GB RAM (recomendado 8GB+)
+- Mínimo 20GB espacio en disco
+- Conectividad de red
 
-- Asegúrate de que el template especificado existe en vSphere
-- Las credenciales se manejan de forma segura usando variables sensitive
-- Los playbooks de Ansible están configurados para usar autenticación por contraseña (recomendado cambiar a claves SSH en producción)
+## 🛠️ Troubleshooting
+
+### Problemas comunes:
+
+1. **Error de conexión vSphere**:
+   - Verifica credenciales en `terraform.tfvars`
+   - Confirma conectividad de red al vCenter/ESXi
+
+2. **Ansible no puede conectar a la VM**:
+   - Espera a que la VM complete el boot
+   - Verifica las credenciales SSH en el inventario
+
+3. **Servicios ELK no inician**:
+   - Verifica que la VM tenga suficiente RAM
+   - Revisa logs: `sudo journalctl -u elasticsearch -f`
+
+### Logs útiles:
+```bash
+# En la VM (después de conectar via SSH)
+sudo systemctl status elasticsearch
+sudo systemctl status logstash  
+sudo systemctl status kibana
+
+# Ver logs en tiempo real
+sudo journalctl -u elasticsearch -f
+sudo journalctl -u kibana -f
+```
+
+## 📚 Documentación adicional
+
+- [README del Stack ELK](ansible/vm1/README_ELK.md) - Documentación detallada del aprovisionamiento
+- [Configuración de módulos](modules/) - Documentación de los módulos de Terraform
+- [Configuración de Packer](packer/) - Templates para crear imágenes personalizadas
+
+## 🔒 Seguridad
+
+⚠️ **Importante para producción**:
+- Cambia las contraseñas por defecto
+- Habilita SSL/TLS en Elasticsearch y Kibana
+- Configura firewall apropiadamente
+- Implementa autenticación robusta
+- Usa certificados válidos
+
+## 🤝 Contribución
+
+Para contribuir al proyecto:
+1. Fork del repositorio
+2. Crea una rama para tu feature
+3. Commit de tus cambios
+4. Push a la rama
+5. Crear un Pull Request

@@ -4,7 +4,7 @@ variable "vm_name" {
 }
 
 variable "ova_path" {
-  description = "Ruta HTTP/S del archivo OVA a importar"
+  description = "Ruta del archivo OVA a importar"
   type        = string
 }
 
@@ -34,4 +34,27 @@ variable "resource_pool_name" {
   default     = "Resources"
   description = "Nombre del resource pool"
   type        = string
+}
+
+# Nuevas variables para configuración de red
+variable "vm_ip_address" {
+  description = "Dirección IP estática para la VM"
+  type        = string
+}
+
+variable "vm_netmask" {
+  description = "Máscara de red para la VM"
+  type        = string
+  default     = "24"
+}
+
+variable "vm_gateway" {
+  description = "Gateway para la VM"
+  type        = string
+}
+
+variable "vm_dns_servers" {
+  description = "Servidores DNS para la VM"
+  type        = list(string)
+  default     = ["8.8.8.8", "8.8.4.4"]
 }
